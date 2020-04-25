@@ -1,42 +1,147 @@
-from imutils.video import VideoStream
-from imutils.video import FPS
 import imutils
 import time
 import cv2
+import numpy as np
 
+from imutils.video import VideoStream
+from imutils.video import FPS
 from src.pylepton.lepton import Lepton
+from src.face.tracking.tracker import create_face_tracker, track_faces
+from settings import MODEL_PATH, PROTO_PATH, CONFIDENCE_THRESH, LOCAL, VIDEO_PATH, BASE_LINE, DETECT_RESIZED, \
+    TRACK_QUALITY, POSITIVE_DIRECTION, NEGATIVE_DIRECTION, FACE_TRACK_CYCLE, SHOW_RESIZED,DEVICE
 
 
 def read_flir():
+    detection = True
+
+    # load our serialized face detector from disk
+    print("[INFO] loading face detector...")
+    detector = cv2.dnn.readNetFromCaffe(PROTO_PATH, MODEL_PATH)
+    # detector.setPreferableTarget(cv2.dnn.DNN_TARGET_MYRIAD)
+
     # initialize the video stream, then allow the camera sensor to warm up
     print("[INFO] starting video stream...")
     # vs = VideoStream(src=0).start()
-    vs = VideoStream(usePiCamera=True).start()
+    if LOCAL:
+        vs = cv2.VideoCapture(VIDEO_PATH)
+    else:
+        vs = VideoStream(usePiCamera=True).start()
     time.sleep(2.0)
 
     # start the FPS throughput estimator
     fps = FPS().start()
+    last_nr = 0
     device = "/dev/spidev0.0"
-    with Lepton(device) as lep:
+    lepton_buf = np.zeros((60, 80, 1), dtype=np.uint16)
+    # with Lepton(device) as lep:
         # loop over frames from the video file stream
-        while True:
-            # grab the frame from the threaded video stream
+    while True:
+        # grab the frame from the threaded video stream
+        if LOCAL:
+            _, frame = vs.read()
+        else:
             frame = vs.read()
             frame = cv2.flip(frame, 1)
             frame = imutils.rotate(frame, -90)
 
-            # update the FPS counter
-            fps.update()
+        # resize the frame to have a width of 600 pixels (while
+        # maintaining the aspect ratio), and then grab the image
+        # dimensions
+        frame = imutils.resize(frame, width=600)
+        (h, w) = frame.shape[:2]
 
-            # show the output frame
-            # vis = cv2.flip( vis, 0)
-            # vis = cv2.flip( vis, 1)
-            cv2.imshow("Frame", frame)
-            key = cv2.waitKey(1) & 0xFF
+        data_face = []
+        if detection:
+            # construct a blob from the image
+            image_blob = cv2.dnn.blobFromImage(
+                cv2.resize(frame, (300, 300)), 1.0, (300, 300),
+                (104.0, 177.0, 123.0), swapRB=False, crop=False)
 
-            # if the `q` key was pressed, break from the loop
-            if key == ord("q"):
-                break
+            # apply OpenCV's deep learning-based face detector to localize
+            # faces in the input image
+            detector.setInput(image_blob)
+            detections = detector.forward()
+
+            # loop over the detections
+            for i in range(0, detections.shape[2]):
+                # extract the confidence (i.e., probability) associated with
+                # the prediction
+                confidence = detections[0, 0, i, 2]
+
+                # filter out weak detections
+                if confidence > CONFIDENCE_THRESH:
+                    # compute the (x, y)-coordinates of the bounding box for
+                    # the face
+                    box = detections[0, 0, i, 3:7] * np.array([w, h, w, h])
+                    (startX, startY, endX, endY) = box.astype("int")
+
+                    # extract the face ROI
+                    face = frame[startY:endY, startX:endX]
+                    (fH, fW) = face.shape[:2]
+
+                    # ensure the face width and height are sufficiently large
+                    if fW < 5 or fH < 5:
+                        continue
+
+                    data_face.append([(startX, startY), (endX, endY)])
+                    # draw the bounding box of the face along with the
+                    # associated probability
+                    cv2.rectangle(frame, (startX, startY), (endX, endY),
+                                  (0, 0, 255), 2)
+        #
+        # _, nr = lep.capture(lepton_buf)
+        # if nr == last_nr:
+        #     # no need to redo this frame
+        #     continue
+        # last_nr = nr
+        lepton_buf = np.flip(lepton_buf, 0)
+        # print(np.min(lepton_buf), np.max(lepton_buf))
+        array = ((lepton_buf.copy() * 0.0439 - 321) * 12.5 - 287)
+        array = array.astype(np.uint8)
+        array = cv2.resize(array, (640, 480))
+        array = cv2.applyColorMap(array, cv2.COLORMAP_JET)
+
+        for i in data_face:
+            x1 = i[0][0] - 10
+            y1 = i[0][1] - 100
+            x2 = i[1][0] - 10
+            y2 = i[1][1] - 100
+            # cv2.rectangle(array, (x1,y1), (x2,y2),
+            #           (0, 0, 255), 2)
+
+            x1_real = int(x1 * lepton_buf.shape[1] / array.shape[1])
+            y1_real = int(y1 * lepton_buf.shape[0] / array.shape[0])
+            x2_real = int(x2 * lepton_buf.shape[1] / array.shape[1])
+            y2_real = int(y2 * lepton_buf.shape[0] / array.shape[0])
+            val_array = lepton_buf[y1_real: y2_real, x1_real: x2_real, :]
+            if val_array.size == 0:
+                pass
+            else:
+                real_val = '{:.2f}'.format(np.max(val_array) * 0.0439 - 321)
+
+                cv2.rectangle(frame, (i[0][0], i[0][1]), (i[0][0] + 50, i[0][1] - 20),
+                              (0, 0, 255), -1)
+
+                cv2.putText(frame, real_val, (i[0][0] + 3, i[0][1] - 3), cv2.FONT_HERSHEY_SIMPLEX, 0.5,
+                            (255, 255, 255), 1)
+
+        frame = cv2.resize(frame, (640, 480))
+
+        vis = np.concatenate((array, frame), axis=1)
+
+        vis = cv2.resize(vis, None, fx=0.9, fy=0.9)
+        # update the FPS counter
+        fps.update()
+
+        # show the output frame
+        # vis = cv2.flip( vis, 0)
+        # vis = cv2.flip( vis, 1)
+        cv2.imshow("Frame", vis)
+        key = cv2.waitKey(1) & 0xFF
+
+        # if the `q` key was pressed, break from the loop
+        if key == ord("q"):
+            break
 
     # stop the timer and display FPS information
     fps.stop()
@@ -48,6 +153,184 @@ def read_flir():
     vs.stop()
 
 
+class PersonCounterTemperature:
+
+    def __init__(self):
+
+        self.face_trackers = {}
+        self.face_attributes = {}
+        self.face_id = 1
+        self.base_line_axis = None
+        self.base_value = 0
+        self.positives = 0
+        self.negatives = 0
+        self.show_height = None
+        self.show_width = None
+        self.w_ratio = None
+        self.h_ratio = None
+        self.lepton_buf = np.zeros((60, 80, 1), dtype=np.uint16)
+        self.last_nr = 0
+
+    @staticmethod
+    def __init_base_line_axis(width, height, w_ratio, h_ratio):
+
+        x_interval = width * (BASE_LINE[2] - BASE_LINE[0])
+        y_interval = height * (BASE_LINE[3] - BASE_LINE[1])
+        if x_interval > y_interval:
+            axis = 1
+            base_value = int(0.5 * height * (BASE_LINE[3] + BASE_LINE[1]) / h_ratio)
+        else:
+            axis = 0
+            base_value = int(0.5 * width * (BASE_LINE[2] + BASE_LINE[0]) / w_ratio)
+
+        return axis, base_value
+
+    def __init_lepton(self):
+
+        with Lepton(DEVICE) as lep:
+            _, nr = lep.capture(self.lepton_buf)
+
+        return nr
+
+    def calculate_temperature(self, temp_frame):
+
+        self.lepton_buf = np.flip(self.lepton_buf, 0)
+        # print(np.min(lepton_buf), np.max(lepton_buf))
+        array = ((self.lepton_buf.copy() * 0.0439 - 321) * 12.5 - 287)
+        array = array.astype(np.uint8)
+        array = cv2.resize(array, (640, 480))
+        array = cv2.applyColorMap(array, cv2.COLORMAP_JET)
+
+        for fid in self.face_attributes.keys():
+
+            face_left = self.face_attributes[fid]["face"][0]
+            face_top = self.face_attributes[fid]["face"][1]
+            face_right = self.face_attributes[fid]["face"][2]
+            face_bottom = self.face_attributes[fid]["face"][3]
+
+            face_left_real = int(face_left * self.lepton_buf.shape[1] / array.shape[1])
+            face_top_real = int(face_top * self.lepton_buf.shape[0] / array.shape[0])
+            face_right_real = int(face_right * self.lepton_buf.shape[1] / array.shape[1])
+            face_bottom_real = int(face_bottom * self.lepton_buf.shape[0] / array.shape[0])
+            temp_array = self.lepton_buf[face_top_real: face_bottom_real, face_left_real: face_right_real, :]
+            if temp_array.size == 0:
+                temp_val = 0
+            else:
+                temp_val = '{:.2f}'.format(np.max(temp_array) * 0.0439 - 321)
+
+            cv2.putText(temp_frame, temp_val, (int(self.w_ratio * face_left) + 3, int(self.h_ratio * face_top) - 3),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
+
+        return temp_frame, array
+
+    def count_person(self):
+
+        for fid in self.face_trackers.keys():
+            # if not self.person_attributes[fid]["counted"]:
+            init_pos_axis = self.face_attributes[fid]["centers"][0][self.base_line_axis]
+            current_pos = self.face_attributes[fid]["centers"][-1]
+            current_pos_axis = current_pos[self.base_line_axis]
+            y = [c[self.base_line_axis] for c in self.face_attributes[fid]["centers"]]
+            direction = current_pos_axis - np.mean(y)
+
+            if direction < 0 and current_pos_axis < self.base_value < init_pos_axis:
+                self.negatives += 1
+                self.face_attributes[fid]["centers"] = []
+                self.face_attributes[fid]["centers"].append(current_pos)
+
+            elif direction > 0 and current_pos_axis > self.base_value > init_pos_axis:
+                self.positives += 1
+                self.face_attributes[fid]["centers"] = []
+                self.face_attributes[fid]["centers"].append(current_pos)
+
+        return
+
+    def main(self):
+
+        if LOCAL:
+            cap = cv2.VideoCapture(VIDEO_PATH)
+        else:
+            cap = VideoStream(usePiCamera=True).start()
+        cnt = 0
+
+        while True:
+
+            if LOCAL:
+                _, frame = cap.read()
+            else:
+                frame = cap.read()
+                frame = cv2.flip(frame, 1)
+                frame = imutils.rotate(frame, -90)
+
+            resized_image = cv2.resize(frame, (DETECT_RESIZED, DETECT_RESIZED))
+            show_img = cv2.resize(frame, (SHOW_RESIZED[0], SHOW_RESIZED[1]))
+            if self.show_height is None:
+                self.show_height, self.show_width = show_img.shape[:2]
+                # img = cv2.rotate(img, cv2.ROTATE_90_CLOCKWISE)
+                self.w_ratio = self.show_width / DETECT_RESIZED
+                self.h_ratio = self.show_height / DETECT_RESIZED
+
+            if self.base_line_axis is None:
+                self.base_line_axis, self.base_value = self.__init_base_line_axis(width=self.show_width,
+                                                                                  height=self.show_height,
+                                                                                  w_ratio=self.w_ratio,
+                                                                                  h_ratio=self.h_ratio)
+
+            cv2.line(show_img, (int(BASE_LINE[0] * self.show_width), int(BASE_LINE[1] * self.show_height)),
+                     (int(BASE_LINE[2] * self.show_width), int(BASE_LINE[3] * self.show_height)), (0, 255, 0), 5)
+
+            fids_to_delete = []
+            for fid in self.face_trackers.keys():
+                tracking_quality = self.face_trackers[fid].update(resized_image)
+
+                # If the tracking quality is good enough, we must delete this tracker
+                if tracking_quality < TRACK_QUALITY:
+                    fids_to_delete.append(fid)
+
+            for fid in fids_to_delete:
+                print("Removing fid " + str(fid) + " from list of trackers")
+                self.face_trackers.pop(fid, None)
+                self.face_attributes.pop(fid, None)
+
+            # result_img = show_img
+
+            if cnt % FACE_TRACK_CYCLE == 0:
+                self.face_trackers, self.face_attributes, self.face_id, result_img = \
+                    create_face_tracker(detect_img=resized_image, trackers=self.face_trackers,
+                                          attributes=self.face_attributes, face_id=self.face_id,
+                                          show_img=show_img, w_ratio=self.w_ratio, h_ratio=self.h_ratio)
+            else:
+                result_img, self.face_attributes = track_faces(face_frame=show_img, w_ratio=self.w_ratio,
+                                                                 h_ratio=self.h_ratio, trackers=self.face_trackers,
+                                                                 attributes=self.face_attributes)
+
+            cnt += 1
+            self.count_person()
+
+            if not LOCAL:
+                if self.last_nr == self.__init_lepton():
+                    continue
+                else:
+                    self.last_nr = self.__init_lepton()
+
+            temp_img, thermal_array = self.calculate_temperature(temp_frame=result_img)
+
+            cv2.putText(temp_img, "{} : {}".format(POSITIVE_DIRECTION, self.positives), (10, self.show_height - 30),
+                        cv2.FONT_HERSHEY_SIMPLEX, 1.5, (0, 255, 0), 3)
+            cv2.putText(temp_img, "{} : {}".format(NEGATIVE_DIRECTION, self.negatives), (10, self.show_height - 80),
+                        cv2.FONT_HERSHEY_SIMPLEX, 1.5, (0, 0, 255), 2)
+
+            final_frame = np.concatenate((thermal_array, temp_img), axis=1)
+
+            cv2.imshow("image", final_frame)
+            # time.sleep(0.05)
+            if cv2.waitKey(1) & 0xFF == ord('q'):  # press q to quit
+                break
+        # kill open cv things
+        cap.release()
+        cv2.destroyAllWindows()
+
+
 if __name__ == '__main__':
 
-    read_flir()
+    PersonCounterTemperature().main()
