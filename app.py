@@ -1,5 +1,5 @@
-from src.flir.reader import read_flir
+from src.flir.reader import PersonCounterTemperature
 
 
 if __name__ == '__main__':
-    read_flir()
+    PersonCounterTemperature().main()
