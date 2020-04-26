@@ -132,4 +132,4 @@ def create_face_tracker(detect_img, show_img, trackers, attributes, face_id, w_r
 
 if __name__ == '__main__':
 
-    track_faces(face_frame=cv2.imread(""), trackers={})
+    track_faces(face_frame=cv2.imread(""), trackers={}, attributes={}, w_ratio=0, h_ratio=0)
