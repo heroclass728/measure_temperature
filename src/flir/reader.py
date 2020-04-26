@@ -1,5 +1,5 @@
 import imutils
-# import time
+import time
 import cv2
 import numpy as np
 
@@ -109,6 +109,7 @@ class PersonCounterTemperature:
             cap = cv2.VideoCapture(VIDEO_PATH)
         else:
             cap = VideoStream(usePiCamera=True).start()
+            time.sleep(2.0)
         cnt = 0
 
         while True:
