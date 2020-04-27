@@ -26,7 +26,7 @@ class PersonCounterTemperature:
         self.show_width = None
         self.w_ratio = None
         self.h_ratio = None
-        self.lepton_buf = np.zeros((60, 80, 1), dtype=np.uint16)
+        self.lepton_buf = np.zeros((80, 60, 1), dtype=np.uint16)
         self.last_nr = 0
 
     @staticmethod
