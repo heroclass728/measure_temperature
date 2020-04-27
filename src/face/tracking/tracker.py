@@ -68,6 +68,8 @@ def create_face_tracker(detect_img, show_img, trackers, attributes, face_id, w_r
     face_coordinates = face_detector.detect_face(frame=detect_img)
     print(time.time() - st_time)
 
+    st_time_track = time.time()
+
     detected_centers = []
 
     for coordinates in face_coordinates:
@@ -129,6 +131,7 @@ def create_face_tracker(detect_img, show_img, trackers, attributes, face_id, w_r
 
     trackers, attributes = filter_undetected_trackers(trackers=trackers, attributes=attributes,
                                                       detected_rects=detected_centers)
+    print("creating tracker:", time.time() - st_time_track)
 
     return trackers, attributes, face_id, show_img
 

@@ -159,9 +159,11 @@ class PersonCounterTemperature:
                                           attributes=self.face_attributes, face_id=self.face_id,
                                           show_img=show_img, w_ratio=self.w_ratio, h_ratio=self.h_ratio)
             else:
+                st_time = time.time()
                 result_img, self.face_attributes = track_faces(face_frame=show_img, w_ratio=self.w_ratio,
                                                                  h_ratio=self.h_ratio, trackers=self.face_trackers,
                                                                  attributes=self.face_attributes)
+                print("tracking time:", time.time() -st_time)
 
             cnt += 1
             self.count_person()
