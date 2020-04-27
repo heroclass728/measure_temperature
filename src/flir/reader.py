@@ -52,7 +52,7 @@ class PersonCounterTemperature:
 
     def calculate_temperature(self, temp_frame):
 
-        self.lepton_buf = np.flip(self.lepton_buf, 0)
+        self.lepton_buf = np.flip(self.lepton_buf, 1)
         # print(np.min(lepton_buf), np.max(lepton_buf))
         array = ((self.lepton_buf.copy() * 0.0439 - 321) * 12.5 - 287)
         array = array.astype(np.uint8)

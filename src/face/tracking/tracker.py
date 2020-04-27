@@ -4,12 +4,15 @@ import collections
 import time
 import numpy as np
 
-from settings import MARGIN
-from src.face.detection.detector import FaceDetector
+from src.face.detection.detector import FaceDetectorHaar, FaceDetectorRes10
 from src.filter.tracker_filter import filter_undetected_trackers
 from src.filter.nms import non_max_suppression_slow
+from settings import MARGIN, MODEL_HAAR
 
-face_detector = FaceDetector()
+if MODEL_HAAR:
+    face_detector = FaceDetectorHaar()
+else:
+    face_detector = FaceDetectorRes10()
 
 
 def track_faces(face_frame, trackers, attributes, w_ratio, h_ratio):
