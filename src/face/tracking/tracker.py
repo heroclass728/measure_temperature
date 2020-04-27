@@ -129,9 +129,9 @@ def create_face_tracker(detect_img, show_img, trackers, attributes, face_id, w_r
 
             face_id += 1
 
+    print("creating tracker:", time.time() - st_time_track)
     trackers, attributes = filter_undetected_trackers(trackers=trackers, attributes=attributes,
                                                       detected_rects=detected_centers)
-    print("creating tracker:", time.time() - st_time_track)
 
     return trackers, attributes, face_id, show_img
 
