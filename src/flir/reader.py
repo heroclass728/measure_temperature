@@ -76,8 +76,8 @@ class PersonCounterTemperature:
             else:
                 temp_val = '{:.2f}'.format(np.max(temp_array) * 0.0439 - 321)
 
-            cv2.rectangle(array, [int(w_ratio * face_left), int(h_ratio * face_top)],
-                          [int(w_ratio * face_right), int(h_ratio * face_bottom)], (0, 0, 255), 2)
+            cv2.rectangle(array, (int(w_ratio * face_left), int(h_ratio * face_top)),
+                          (int(w_ratio * face_right), int(h_ratio * face_bottom)), (0, 0, 255), 2)
 
             cv2.putText(temp_frame, temp_val, (int(self.w_ratio * face_left) + 3, int(self.h_ratio * face_top) - 3),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
