@@ -55,6 +55,8 @@ class PersonCounterTemperature:
         self.lepton_buf = np.flip(self.lepton_buf, 1)
         # print(np.min(lepton_buf), np.max(lepton_buf))
         array = ((self.lepton_buf.copy() * 0.0439 - 321) * 12.5 - 287)
+        cv2.imshow("lepton", self.lepton_buf)
+        cv2.waitKey()
         array = array.astype(np.uint8)
         array = cv2.resize(array, (640, 480))
         array = cv2.applyColorMap(array, cv2.COLORMAP_JET)
@@ -66,10 +68,10 @@ class PersonCounterTemperature:
             face_right = self.face_attributes[fid]["face"][2]
             face_bottom = self.face_attributes[fid]["face"][3]
 
-            face_left_real = int(4 * face_left * self.lepton_buf.shape[1] / array.shape[1])
-            face_top_real = int(0.5 * face_top * self.lepton_buf.shape[0] / array.shape[0])
-            face_right_real = int(4 * face_right * self.lepton_buf.shape[1] / array.shape[1])
-            face_bottom_real = int(0.5 * face_bottom * self.lepton_buf.shape[0] / array.shape[0])
+            face_left_real = int(2 * face_left * self.lepton_buf.shape[1] / array.shape[1])
+            face_top_real = int(2 * face_top * self.lepton_buf.shape[0] / array.shape[0])
+            face_right_real = int(2 * face_right * self.lepton_buf.shape[1] / array.shape[1])
+            face_bottom_real = int(2 * face_bottom * self.lepton_buf.shape[0] / array.shape[0])
             temp_array = self.lepton_buf[face_top_real: face_bottom_real, face_left_real: face_right_real, :]
             if temp_array.size == 0:
                 temp_val = 0
