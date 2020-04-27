@@ -66,10 +66,10 @@ class PersonCounterTemperature:
             face_right = self.face_attributes[fid]["face"][2]
             face_bottom = self.face_attributes[fid]["face"][3]
 
-            face_left_real = int(face_left * self.lepton_buf.shape[1] / array.shape[1])
-            face_top_real = int(face_top * self.lepton_buf.shape[0] / array.shape[0])
-            face_right_real = int(face_right * self.lepton_buf.shape[1] / array.shape[1])
-            face_bottom_real = int(face_bottom * self.lepton_buf.shape[0] / array.shape[0])
+            face_left_real = int(2 * face_left * self.lepton_buf.shape[1] / array.shape[1])
+            face_top_real = int(2 * face_top * self.lepton_buf.shape[0] / array.shape[0])
+            face_right_real = int(2 * face_right * self.lepton_buf.shape[1] / array.shape[1])
+            face_bottom_real = int(2 * face_bottom * self.lepton_buf.shape[0] / array.shape[0])
             temp_array = self.lepton_buf[face_top_real: face_bottom_real, face_left_real: face_right_real, :]
             if temp_array.size == 0:
                 temp_val = 0
