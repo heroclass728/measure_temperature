@@ -50,7 +50,7 @@ class PersonCounterTemperature:
 
         return nr
 
-    def calculate_temperature(self, temp_frame):
+    def calculate_temperature(self, temp_frame, w_ratio, h_ratio):
 
         self.lepton_buf = np.flip(self.lepton_buf, 1)
         # print(np.min(lepton_buf), np.max(lepton_buf))
@@ -75,6 +75,9 @@ class PersonCounterTemperature:
                 temp_val = 0
             else:
                 temp_val = '{:.2f}'.format(np.max(temp_array) * 0.0439 - 321)
+
+            cv2.rectangle(array, [int(w_ratio * face_left), int(h_ratio * face_top)],
+                          [int(w_ratio * face_right, h_ratio * face_bottom)], (0, 0, 255), 2)
 
             cv2.putText(temp_frame, temp_val, (int(self.w_ratio * face_left) + 3, int(self.h_ratio * face_top) - 3),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
@@ -163,7 +166,7 @@ class PersonCounterTemperature:
                 result_img, self.face_attributes = track_faces(face_frame=show_img, w_ratio=self.w_ratio,
                                                                  h_ratio=self.h_ratio, trackers=self.face_trackers,
                                                                  attributes=self.face_attributes)
-                print("tracking time:", time.time() -st_time)
+                print("tracking time:", time.time() - st_time)
 
             cnt += 1
             self.count_person()
@@ -174,7 +177,8 @@ class PersonCounterTemperature:
                 else:
                     self.last_nr = self.__init_lepton()
 
-            temp_img, thermal_array = self.calculate_temperature(temp_frame=result_img)
+            temp_img, thermal_array = self.calculate_temperature(temp_frame=result_img, w_ratio=self.w_ratio,
+                                                                 h_ratio=self.h_ratio)
 
             cv2.putText(temp_img, "{} : {}".format(POSITIVE_DIRECTION, self.positives), (10, self.show_height - 30),
                         cv2.FONT_HERSHEY_SIMPLEX, 1.5, (0, 255, 0), 3)
@@ -185,7 +189,7 @@ class PersonCounterTemperature:
 
             cv2.imshow("image", final_frame)
             # time.sleep(0.05)
-            if cv2.waitKey(1) & 0xFF == ord('q'):  # press q to quit
+            if cv2.waitKey(100) & 0xFF == ord('q'):  # press q to quit
                 break
         # kill open cv things
         cap.release()
