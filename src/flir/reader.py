@@ -7,6 +7,7 @@ from imutils.video import VideoStream
 # from imutils.video import FPS
 from src.pylepton.lepton import Lepton
 from src.face.tracking.tracker import create_face_tracker, track_faces
+from src.face.recognition.matcher import FaceMatcher
 from settings import LOCAL, VIDEO_PATH, BASE_LINE, DETECT_RESIZED, TRACK_QUALITY, POSITIVE_DIRECTION, \
     NEGATIVE_DIRECTION, FACE_TRACK_CYCLE, SHOW_RESIZED, DEVICE
 
@@ -14,6 +15,8 @@ from settings import LOCAL, VIDEO_PATH, BASE_LINE, DETECT_RESIZED, TRACK_QUALITY
 class PersonCounterTemperature:
 
     def __init__(self):
+
+        self.face_matcher = FaceMatcher()
 
         self.face_trackers = {}
         self.face_attributes = {}
@@ -88,7 +91,7 @@ class PersonCounterTemperature:
 
     def count_person(self):
 
-        for fid in self.face_trackers.keys():
+        for fid in self.face_attributes.keys():
             # if not self.person_attributes[fid]["counted"]:
             init_pos_axis = self.face_attributes[fid]["centers"][0][self.base_line_axis]
             current_pos = self.face_attributes[fid]["centers"][-1]
@@ -122,7 +125,9 @@ class PersonCounterTemperature:
             if LOCAL:
                 _, frame = cap.read()
             else:
+                st_time = time.time()
                 frame = cap.read()
+                print("frame read time:", time.time() - st_time)
                 frame = cv2.flip(frame, 1)
                 frame = imutils.rotate(frame, -90)
 
@@ -171,6 +176,73 @@ class PersonCounterTemperature:
                 print("tracking time:", time.time() - st_time)
 
             cnt += 1
+            self.count_person()
+
+            if not LOCAL:
+                if self.last_nr == self.__init_lepton():
+                    continue
+                else:
+                    self.last_nr = self.__init_lepton()
+
+            temp_img, thermal_array = self.calculate_temperature(temp_frame=result_img, w_ratio=self.w_ratio,
+                                                                 h_ratio=self.h_ratio)
+
+            cv2.putText(temp_img, "{} : {}".format(POSITIVE_DIRECTION, self.positives), (10, self.show_height - 30),
+                        cv2.FONT_HERSHEY_SIMPLEX, 1.5, (0, 255, 0), 3)
+            cv2.putText(temp_img, "{} : {}".format(NEGATIVE_DIRECTION, self.negatives), (10, self.show_height - 80),
+                        cv2.FONT_HERSHEY_SIMPLEX, 1.5, (0, 0, 255), 2)
+
+            final_frame = np.concatenate((thermal_array, temp_img), axis=1)
+
+            cv2.imshow("image", final_frame)
+            # time.sleep(0.05)
+            if cv2.waitKey(100) & 0xFF == ord('q'):  # press q to quit
+                break
+        # kill open cv things
+        cap.release()
+        cv2.destroyAllWindows()
+
+    def main_face_match(self):
+
+        if LOCAL:
+            cap = cv2.VideoCapture(VIDEO_PATH)
+        else:
+            cap = VideoStream(usePiCamera=True).start()
+            time.sleep(2.0)
+
+        while True:
+
+            if LOCAL:
+                _, frame = cap.read()
+            else:
+                frame = cap.read()
+                frame = cv2.flip(frame, 1)
+                frame = imutils.rotate(frame, -90)
+
+            resized_image = cv2.resize(frame, (DETECT_RESIZED, DETECT_RESIZED))
+            show_img = cv2.resize(frame, (SHOW_RESIZED[0], SHOW_RESIZED[1]))
+            if self.show_height is None:
+                self.show_height, self.show_width = show_img.shape[:2]
+                # img = cv2.rotate(img, cv2.ROTATE_90_CLOCKWISE)
+                self.w_ratio = self.show_width / DETECT_RESIZED
+                self.h_ratio = self.show_height / DETECT_RESIZED
+
+            if self.base_line_axis is None:
+                self.base_line_axis, self.base_value = self.__init_base_line_axis(width=self.show_width,
+                                                                                  height=self.show_height,
+                                                                                  w_ratio=self.w_ratio,
+                                                                                  h_ratio=self.h_ratio)
+
+            cv2.line(show_img, (int(BASE_LINE[0] * self.show_width), int(BASE_LINE[1] * self.show_height)),
+                     (int(BASE_LINE[2] * self.show_width), int(BASE_LINE[3] * self.show_height)), (0, 255, 0), 5)
+
+            st_time = time.time()
+            self.face_attributes, self.face_id, result_img = \
+                self.face_matcher.recognize_face(face_attributes=self.face_attributes, face_id=self.face_id,
+                                                 detect_frame=resized_image, show_frame=show_img, w_ratio=self.w_ratio,
+                                                 h_ratio=self.h_ratio)
+            print("process time:", time.time() - st_time)
+
             self.count_person()
 
             if not LOCAL:

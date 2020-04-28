@@ -6,7 +6,7 @@ MODEL_PATH = os.path.join(CUR_DIR, 'utils', 'model', 'res10_300x300_ssd_iter_140
 PROTO_PATH = os.path.join(CUR_DIR, 'utils', 'model', 'deploy.prototxt')
 FRONT_FACE_DETECTION_MODEL = os.path.join(CUR_DIR, 'utils', 'model', 'haarcascade_frontalface_default.xml')
 SIDE_FACE_DETECTION_MODEL = os.path.join(CUR_DIR, 'utils', 'model', 'haarcascade_profileface.xml')
-VIDEO_PATH = ""
+VIDEO_PATH = "/media/mensa/Data/Task/TemperatureMeasurement/out-22.ogv"
 
 CONFIDENCE_THRESH = 0.2
 OVERLAP_THRESH = 0.7
@@ -15,7 +15,7 @@ DETECT_RESIZED = 300
 SHOW_RESIZED = [640, 480]
 TRACK_QUALITY = 2
 FACE_TRACK_CYCLE = 20
-UNDETECTED_THRESH = 5
+UNDETECTED_THRESH = 40
 POSITIVE_DIRECTION = "Right"
 NEGATIVE_DIRECTION = "Left"
 
@@ -23,4 +23,4 @@ BASE_LINE = [0.5, 0, 0.5, 1]
 DEVICE = "/dev/spidev0.0"
 
 MODEL_HAAR = True
-LOCAL = False
+LOCAL = True
