@@ -29,7 +29,7 @@ class PersonCounterTemperature:
         self.show_width = None
         self.w_ratio = None
         self.h_ratio = None
-        self.lepton_buf = np.zeros((80, 60, 1), dtype=np.uint16)
+        self.lepton_buf = np.zeros((60, 80, 1), dtype=np.uint16)
         self.last_nr = 0
 
     @staticmethod
@@ -169,11 +169,9 @@ class PersonCounterTemperature:
                                           attributes=self.face_attributes, face_id=self.face_id,
                                           show_img=show_img, w_ratio=self.w_ratio, h_ratio=self.h_ratio)
             else:
-                st_time = time.time()
                 result_img, self.face_attributes = track_faces(face_frame=show_img, w_ratio=self.w_ratio,
                                                                  h_ratio=self.h_ratio, trackers=self.face_trackers,
                                                                  attributes=self.face_attributes)
-                print("tracking time:", time.time() - st_time)
 
             cnt += 1
             self.count_person()
