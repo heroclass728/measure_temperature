@@ -19,7 +19,7 @@ class FaceMatcher:
         print("detection time:", time.time() - st_time)
 
         st_time = time.time()
-        encodings = face_recognition.face_encodings(detect_frame, new_faces, model="small")
+        encodings = face_recognition.face_encodings(detect_frame, new_faces)
         print("recognition time:", time.time() - st_time)
 
         if not face_attributes.keys():
