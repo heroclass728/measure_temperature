@@ -19,7 +19,14 @@ UNDETECTED_THRESH = 40
 POSITIVE_DIRECTION = "Right"
 NEGATIVE_DIRECTION = "Left"
 
+# The ratio of the positions of of two points in base line corresponding to width, height.
+# base line = [x1, y1, x2, y2].
+# , where x1 =  screen width * BASE_LINE[0], y1 = screen height * BASE_LINE[1], x2 = width * BASE_LINE[2],
+# y2 = height * BASE_LINE[3]
+
 BASE_LINE = [0.5, 0, 0.5, 1]
+THERMAL_COEFF_1 = 0.0439
+THERMAL_COEFF_2 = -321
 DEVICE = "/dev/spidev0.0"
 
 MODEL_HAAR = True

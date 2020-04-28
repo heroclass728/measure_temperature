@@ -4,12 +4,11 @@ import cv2
 import numpy as np
 
 from imutils.video import VideoStream
-# from imutils.video import FPS
 from src.pylepton.lepton import Lepton
 from src.face.tracking.tracker import create_face_tracker, track_faces
 from src.face.recognition.matcher import FaceMatcher
 from settings import LOCAL, VIDEO_PATH, BASE_LINE, DETECT_RESIZED, TRACK_QUALITY, POSITIVE_DIRECTION, \
-    NEGATIVE_DIRECTION, FACE_TRACK_CYCLE, SHOW_RESIZED, DEVICE
+    NEGATIVE_DIRECTION, FACE_TRACK_CYCLE, SHOW_RESIZED, DEVICE, THERMAL_COEFF_1, THERMAL_COEFF_2
 
 
 class PersonCounterTemperature:
@@ -53,11 +52,11 @@ class PersonCounterTemperature:
 
         return nr
 
-    def calculate_temperature(self, temp_frame, w_ratio, h_ratio):
+    def calculate_temperature(self, temp_frame):
 
         self.lepton_buf = np.flip(self.lepton_buf, 1)
         # print(np.min(lepton_buf), np.max(lepton_buf))
-        array = ((self.lepton_buf.copy() * 0.0439 - 321) * 12.5 - 287)
+        array = ((self.lepton_buf.copy() * THERMAL_COEFF_1 + THERMAL_COEFF_2) * 12.5 - 287)
         # cv2.imshow("lepton", self.lepton_buf)
         # cv2.waitKey()
         array = array.astype(np.uint8)
@@ -71,18 +70,18 @@ class PersonCounterTemperature:
             face_right = self.face_attributes[fid]["face"][2]
             face_bottom = self.face_attributes[fid]["face"][3]
 
-            face_left_real = int(2 * face_left * self.lepton_buf.shape[1] / array.shape[1])
-            face_top_real = int(2 * face_top * self.lepton_buf.shape[0] / array.shape[0])
-            face_right_real = int(2 * face_right * self.lepton_buf.shape[1] / array.shape[1])
-            face_bottom_real = int(2 * face_bottom * self.lepton_buf.shape[0] / array.shape[0])
+            face_left_real = int(self.w_ratio * face_left * self.lepton_buf.shape[1] / array.shape[1])
+            face_top_real = int(self.h_ratio * face_top * self.lepton_buf.shape[0] / array.shape[0])
+            face_right_real = int(self.w_ratio * face_right * self.lepton_buf.shape[1] / array.shape[1])
+            face_bottom_real = int(self.h_ratio * face_bottom * self.lepton_buf.shape[0] / array.shape[0])
             temp_array = self.lepton_buf[face_top_real: face_bottom_real, face_left_real: face_right_real, :]
             if temp_array.size == 0:
                 temp_val = 0
             else:
-                temp_val = '{:.2f}'.format(np.max(temp_array) * 0.0439 - 321)
+                temp_val = '{:.2f}'.format(np.max(temp_array) * THERMAL_COEFF_1 + THERMAL_COEFF_2)
 
-            cv2.rectangle(array, (int(w_ratio * face_left), int(h_ratio * face_top)),
-                          (int(w_ratio * face_right), int(h_ratio * face_bottom)), (0, 0, 255), 2)
+            cv2.rectangle(array, (int(self.w_ratio * face_left), int(self.h_ratio * face_top)),
+                          (int(self.w_ratio * face_right), int(self.h_ratio * face_bottom)), (0, 0, 255), 2)
 
             cv2.putText(temp_frame, temp_val, (int(self.w_ratio * face_left) + 3, int(self.h_ratio * face_top) - 3),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
@@ -182,8 +181,7 @@ class PersonCounterTemperature:
                 else:
                     self.last_nr = self.__init_lepton()
 
-            temp_img, thermal_array = self.calculate_temperature(temp_frame=result_img, w_ratio=self.w_ratio,
-                                                                 h_ratio=self.h_ratio)
+            temp_img, thermal_array = self.calculate_temperature(temp_frame=result_img)
 
             cv2.putText(temp_img, "{} : {}".format(POSITIVE_DIRECTION, self.positives), (10, self.show_height - 30),
                         cv2.FONT_HERSHEY_SIMPLEX, 1.5, (0, 255, 0), 3)
@@ -249,8 +247,7 @@ class PersonCounterTemperature:
                 else:
                     self.last_nr = self.__init_lepton()
 
-            temp_img, thermal_array = self.calculate_temperature(temp_frame=result_img, w_ratio=self.w_ratio,
-                                                                 h_ratio=self.h_ratio)
+            temp_img, thermal_array = self.calculate_temperature(temp_frame=result_img)
 
             cv2.putText(temp_img, "{} : {}".format(POSITIVE_DIRECTION, self.positives), (10, self.show_height - 30),
                         cv2.FONT_HERSHEY_SIMPLEX, 1.5, (0, 255, 0), 3)

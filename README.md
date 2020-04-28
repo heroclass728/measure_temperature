@@ -9,7 +9,7 @@ connected to Raspberry Pi.
 
 - src
 
-    The source code to calculate the human body temperature and detect person
+    The source code to calculate the human body temperature and count person
 
 - utils
 
@@ -29,7 +29,7 @@ connected to Raspberry Pi.
 
     Python 3.6
 
-- Dependency Installtion
+- Dependency Installation
 
     Please go ahead to the directory of this project and run the following command.
     
@@ -38,6 +38,9 @@ connected to Raspberry Pi.
     ```
 
 ## Execution
+
+- For the temperature measurement, you can set THERMAL_COEFF_1 and THERMAL_COEFF_2 in settings file, whose default values 
+are 0.0439 and -321.
 
 - Please run the following command
 
